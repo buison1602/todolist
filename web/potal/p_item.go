@@ -1,6 +1,6 @@
 package potal
 
-import "todoList/storage"
+import "github.com/buison1602/todolist/storage"
 
 type ItemForm struct {
 	Item string `json:"item" validate:"omitempty"`

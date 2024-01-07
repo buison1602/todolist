@@ -1,19 +1,22 @@
 package storage
 
 import (
+	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+type Config struct {
+	Dns string `yaml:"dns"`
+}
 
 // represent for the connection to postgresql
 type psql struct {
 	db *gorm.DB
 }
 
-func NewStorage() Storage {
-	connectionStr := "user=yourtodolist password=password dbname=todolist port=5432 sslmode=disable"
-
-	db, err := gorm.Open(postgres.Open(connectionStr), &gorm.Config{})
+func NewStorage(c Config) Storage {
+	db, err := gorm.Open(postgres.Open(c.Dns), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -26,7 +29,7 @@ func NewStorage() Storage {
 
 // create table in Database
 func migrate(conn *gorm.DB) error {
-	return conn.AutoMigrate(&Todo{})
+	return conn.AutoMigrate(&Todo{}, &User{})
 }
 
 type Storage interface {
@@ -35,6 +38,8 @@ type Storage interface {
 	Delete(obj interface{}) error
 	FindQuery(todos *[]Todo) error
 	FirstById(todo *Todo, id int) error
+	CheckDuplicate(user *User) error
+	FirstByUserName(userName string) (*User, error)
 }
 
 func (p *psql) Create(obj interface{}) error {
@@ -63,4 +68,26 @@ func (p *psql) FirstById(todo *Todo, id int) error {
 		return err
 	}
 	return nil
+}
+
+func (p *psql) CheckDuplicate(user *User) error {
+	var oldUser User
+	err := p.db.Where("email = ?", user.Email).First(&oldUser).Error
+	if err == nil {
+		return fmt.Errorf("email is exist")
+	}
+	err = p.db.Where("user_name = ?", user.UserName).First(&oldUser).Error
+	if err == nil {
+		return fmt.Errorf("username is exist")
+	}
+	return nil
+}
+
+func (p *psql) FirstByUserName(userName string) (*User, error) {
+	var oldUser User
+	err := p.db.Where("user_name = ?", userName).First(&oldUser).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	return &oldUser, nil
 }
