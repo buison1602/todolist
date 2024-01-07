@@ -1,4 +1,0 @@
-db:
-  dns: "user=yourtodolist password=password dbname=todolist port=5432 sslmode=disable"
-web:
-  port: 777
