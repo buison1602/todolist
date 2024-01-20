@@ -10,7 +10,7 @@ import (
 
 func (s *Server) createItem(w http.ResponseWriter, r *http.Request) {
 	var f potal.ItemForm
-	err := parseJSON(r, &f)
+	err := s.parseJSONAndValidate(r, &f)
 	if err != nil {
 		response(w, http.StatusBadRequest, nil, err)
 		return
@@ -35,7 +35,7 @@ func (s *Server) getListItem(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) updateItem(w http.ResponseWriter, r *http.Request) {
 	var f potal.ItemForm
-	err := parseJSON(r, &f)
+	err := s.parseJSONAndValidate(r, &f)
 	if err != nil {
 		response(w, http.StatusBadRequest, nil, err)
 		return

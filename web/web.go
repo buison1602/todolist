@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"github.com/buison1602/todolist/storage"
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -11,7 +12,8 @@ import (
 type Map map[string]interface{}
 
 type Config struct {
-	Port int `yaml:"port"`
+	Port      int    `yaml:"port"`
+	secretKey string `yaml:"secretKey"`
 }
 
 type AppConfig struct {
@@ -20,9 +22,10 @@ type AppConfig struct {
 }
 
 type Server struct {
-	db  storage.Storage
-	mux *mux.Router
-	cfg Config
+	db        storage.Storage
+	mux       *mux.Router
+	cfg       Config
+	validator *validator.Validate
 }
 
 type Response struct {
@@ -33,9 +36,10 @@ type Response struct {
 func NewWebServer(c *AppConfig) *Server {
 	db := storage.NewStorage(c.Db)
 	var server = Server{
-		db:  db,
-		mux: mux.NewRouter(),
-		cfg: c.Web,
+		db:        db,
+		mux:       mux.NewRouter(),
+		cfg:       c.Web,
+		validator: validator.New(),
 	}
 	return &server
 }
@@ -46,7 +50,16 @@ func (s *Server) Run() {
 	log.Fatal(http.ListenAndServe(":777", s.mux))
 }
 
-func parseJSON(r *http.Request, data interface{}) error {
+func (s *Server) parseJSONAndValidate(r *http.Request, data interface{}) error {
+	err := s.parseJSON(r, data)
+	if err != nil {
+		return err
+	}
+	err = s.validator.Struct(data)
+	return err
+}
+
+func (s *Server) parseJSON(r *http.Request, data interface{}) error {
 	var decoder = json.NewDecoder(r.Body)
 	var err = decoder.Decode(data)
 	defer r.Body.Close()

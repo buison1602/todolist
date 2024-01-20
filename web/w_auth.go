@@ -1,9 +1,6 @@
 package web
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"github.com/asaskevich/govalidator"
 	"github.com/buison1602/todolist/helper"
 	"github.com/buison1602/todolist/web/potal"
@@ -14,13 +11,13 @@ import (
 
 func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
 	var f potal.RegisterForm
-	err := parseJSON(r, &f)
+	err := s.parseJSONAndValidate(r, &f)
 	if err != nil {
 		response(w, http.StatusBadRequest, nil, err)
 		return
 	}
 
-	if govalidator.IsNull(f.Email) || govalidator.IsNull(f.PasswordHash) || govalidator.IsNull(f.UserName) {
+	if govalidator.IsNull(f.Email) || govalidator.IsNull(f.Password) || govalidator.IsNull(f.UserName) {
 		response(w, http.StatusBadRequest, nil, helper.DataError)
 		return
 	}
@@ -52,7 +49,7 @@ func (s *Server) Register(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 	var f potal.LoginForm
-	err := parseJSON(r, &f)
+	err := s.parseJSON(r, &f)
 	if err != nil {
 		response(w, http.StatusBadRequest, nil, err)
 		return
@@ -74,23 +71,15 @@ func (s *Server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create a private key of type ECDSA
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		response(w, http.StatusInternalServerError, nil, err)
-		return
-	}
-
 	// generate a jwt token
 	var authClaim = helper.AuthClaims{
 		Id:       user.Id,
 		UserName: user.UserName,
 	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, authClaim)
-
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, authClaim)
+	
 	// Sign and get the complete encoded token as a string using the secret
-	tokenString, err := token.SignedString(privateKey)
+	tokenString, err := token.SignedString([]byte(s.cfg.secretKey))
 	if err != nil {
 		response(w, http.StatusInternalServerError, nil, err)
 		return
